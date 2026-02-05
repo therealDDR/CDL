@@ -5,7 +5,7 @@ from tkinter import simpledialog
 
 mqttbroker = "127.0.0.1"
 jsonf = 'students.json'
-enrolldist = 0.3 # in meters
+enrolldist = 1 # in meters
 self_id = "iBeacon:e5ca1ade-f007-ba11-0000-000000000000-148-53065"
 
 def enroll_new_device(device_id):
@@ -47,3 +47,4 @@ client.subscribe("espresense/devices/#")
 print("Hold phone near sensor to enroll...")
 
 client.loop_forever()
+
