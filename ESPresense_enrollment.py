@@ -26,8 +26,11 @@ def enroll_new_device(device_id):
 def on_message(client, userdata, msg):
     device_id = msg.topic.split('/')[-1]
     
-    if device_id == self_id:
+    data = json.loads(msg.payload.decode())
+    source = data.get("source")
+    if source == "94cf49":
         return
+
     try:
         data = json.loads(msg.payload.decode())
         distance = data.get("distance", 99)
@@ -47,4 +50,5 @@ client.subscribe("espresense/devices/#")
 print("Hold phone near sensor to enroll...")
 
 client.loop_forever()
+
 
