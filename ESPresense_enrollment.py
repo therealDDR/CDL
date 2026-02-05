@@ -37,11 +37,13 @@ def on_message(client, userdata, msg):
         
         if device_id not in db and distance < enrolldist:
             enroll_new_device(device_id)
-    except: pass
+    except Exception as e:
+        print("Error in on_message:", e)
 
 client = mqtt.Client()
 client.on_message = on_message
 client.connect(mqttbroker, 1883)
 client.subscribe("espresense/devices/#")
 print("Hold phone near sensor to enroll...")
+
 client.loop_forever()
