@@ -24,7 +24,7 @@ def enroll_new_device(device_id):
         print(f"Successfully enrolled {name}.")
 
 def on_message(client, userdata, msg):
-   parts = msg.topic.split('/')
+    parts = msg.topic.split('/')
 
     if len(parts) < 4:
         return
@@ -52,9 +52,5 @@ client = mqtt.Client()
 client.on_message = on_message
 client.connect(mqttbroker, 1883)
 client.subscribe("espresense/devices/#")
-print("Hold phone near sensor to enroll...")
-
+print("Hold phone near sensor to enroll... Press Ctrl+C to stop.")
 client.loop_forever()
-
-
-
