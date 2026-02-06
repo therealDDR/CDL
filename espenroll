@@ -54,4 +54,3 @@ client.connect(mqttbroker, 1883)
 client.subscribe("espresense/devices/#")
 print("Hold phone near sensor to enroll... Press Ctrl+C to stop.")
 client.loop_forever()
-
