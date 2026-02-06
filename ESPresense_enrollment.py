@@ -24,13 +24,18 @@ def enroll_new_device(device_id):
         print(f"Successfully enrolled {name}.")
 
 def on_message(client, userdata, msg):
-    device_id = msg.topic.split('/')[-1]
-    
-    data = json.loads(msg.payload.decode())
-    source = data.get("source")
-    if source == "94cf49":
+   parts = msg.topic.split('/')
+
+    if len(parts) < 4:
         return
 
+    device_id = parts[-2]   # phone/beacon
+    node_id   = parts[-1]   # the ESP32 itself
+
+    self_node_id = "94cf49"
+    if node_id == self_node:
+        return
+        
     try:
         data = json.loads(msg.payload.decode())
         distance = data.get("distance", 99)
@@ -50,5 +55,6 @@ client.subscribe("espresense/devices/#")
 print("Hold phone near sensor to enroll...")
 
 client.loop_forever()
+
 
 
