@@ -24,6 +24,8 @@ def on_message(client, userdata, msg):
             student_name = db[device_id]
             data = json.loads(msg.payload.decode())
             dist = data.get("distance", 99)
+            print("Distance:", dist)
+            print("Payload:", data)
             
             # logic for distance
             if dist < escapedist:
@@ -47,4 +49,5 @@ client.subscribe("espresense/devices/+/94cf49")
 
 print("Monitoring presense (Ctrl+C to stop).")
 client.loop_forever()
+
 
