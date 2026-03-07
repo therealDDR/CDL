@@ -1,4 +1,3 @@
-import paho.mqtt.reasoncodes as rc
 import paho.mqtt.client as mqtt
 import json
 import tkinter as tk
