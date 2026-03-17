@@ -32,7 +32,7 @@ def enroll_new_device(device_id):
         return
     
     # Add to the database and save it to the json file
-    db[name] = device_id
+    db[device_id] = name
     with open(jsonf, "w") as file:
         json.dump(db, file, indent=4)
         print(f"Successfully enrolled: {name}")
