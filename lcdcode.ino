@@ -1,47 +1,93 @@
 #include <LiquidCrystal.h>
 
-// LCD Pin Mapping (Direct Wiring)
+// LCD pins
 const int rs = 13, en = 12, d4 = 7, d5 = 6, d6 = 5, d7 = 4;
+const int buzzer = 9, greenled = 10, redled = 11;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
-String inputString = "";         // A string to hold incoming data
-bool stringComplete = false;     // Whether the string is complete
+String inputString = "";
+bool stringComplete = false;
 
 void setup() {
-   Serial.begin(115200);
-    //esp32 at baud rate of 115200
-  
   lcd.begin(16, 2);
-  lcd.print("Reading ESP data");
-  // Reserve space for the message
-  inputString.reserve(200);
+  lcd.print("Waiting...");
+  Serial.begin(115200);
+  inputString.reserve(100);
+  pinMode(buzzer, OUTPUT);
 }
 
 void loop() {
-  // Checks for a line with distance info
   if (stringComplete) {
-    // Look for "distance" in the ESPresense logs
-    if (inputString.indexOf("distance") > 0) {
-      lcd.clear();
-      lcd.setCursor(0, 0);
-      lcd.print("Device Found!");
+    handleMessage(inputString);
 
-      // Shows a snippet of the log on the second row
-      lcd.setCursor(0, 1);
-      lcd.print(inputString.substring(0, 16));
-    }
-
-    // Clear the string for the next line
     inputString = "";
     stringComplete = false;
   }
 }
-// Runs automatically when serial data from the ESP is detected
+
+// Handle ENTER / EXIT messages
+void handleMessage(String msg) {
+  msg.trim();
+
+  if (msg.startsWith("ENTER:")) {
+    String name = msg.substring(6);
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(name);
+    lcd.setCursor(0, 1);
+    lcd.print("Entered");
+
+    tone(buzzer,440);
+    delay(500);
+    noTone(buzzer);
+
+    digitalWrite(greenled,HIGH);
+    delay(500);
+    digitalWrite(greenled,LOW);
+    delay(500);
+    digitalWrite(greenled,HIGH);
+    delay(500);
+    digitalWrite(greenled,LOW);
+    delay(500);
+    digitalWrite(greenled,HIGH);
+    delay(500);
+    digitalWrite(greenled,LOW);
+  }
+
+  else if (msg.startsWith("EXIT:")) {
+    String name = msg.substring(5);
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(name);
+    lcd.setCursor(0, 1);
+    lcd.print("Left");
+
+    tone(buzzer, 1000);
+    delay(1000);
+    noTone(buzzer);
+
+    digitalWrite(redled,HIGH);
+    delay(500);
+    digitalWrite(redled,LOW);
+    delay(500);
+    digitalWrite(redled,HIGH);
+    delay(500);
+    digitalWrite(redled,LOW);
+    delay(500);
+    digitalWrite(redled,HIGH);
+    delay(500);
+    digitalWrite(redled,LOW);
+  }
+}
+
+// Serial event
 void serialEvent() {
   while (Serial.available()) {
     char inChar = (char)Serial.read();
     inputString += inChar;
-    // If the incoming character is a newline, the string is complete
+
     if (inChar == '\n') {
       stringComplete = true;
     }

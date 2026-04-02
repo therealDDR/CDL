@@ -1,6 +1,6 @@
 import paho.mqtt.client as mqtt
 import json
-from flask import Flask, request, render_template_string
+from flask import Flask, request, render_template_string, redirect, url_for
 from flask_wtf.csrf import CSRFProtect
 import threading
 import time
@@ -13,6 +13,7 @@ mqttbroker = "127.0.0.1"
 jsonf = "students.json"
 enroll_dist = 0.4  # Meters
 dist_list = {}
+current_enrollment = {}
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'ChangeThisSecret!'
@@ -48,6 +49,10 @@ def get_nearest_device():
 
     return device_id, distance
 
+@app.route("/")
+def index():
+    return redirect(url_for("enroll_page"))
+
 @app.route("/enroll")
 # https://127.0.0.1/enroll/
 def enroll_page():
@@ -55,6 +60,13 @@ def enroll_page():
 
     if device_id:
         device_info = f"Closest device: {device_id} ({distance:.2f} m)"
+        with mqtt_lock:
+            data = dist_list.get(device_id)
+            if data:
+                current_enrollment["device_id"] = device_id
+                current_enrollment["uuid"] = data.get("uuid")
+                current_enrollment["major"] = data.get("major")
+                current_enrollment["minor"] = data.get("minor")
     else:
         device_info = "No nearby device detected"
 
@@ -66,7 +78,6 @@ def enroll_page():
     <form method="POST" action="/submit">
         <input type="hidden" name="csrf_token" value="{{{{ csrf_token() }}}}">
         Name: <input type="text" name="name"><br><br>
-        UUID: <input type="text" name="uuid"><br><br>
         <input type="submit" value="Enroll">
     </form>
     '''
@@ -77,7 +88,11 @@ def enroll_page():
 # https://127.0.0.1/submit/
 def submit():
     name = request.form.get("name")
-    input_uuid = request.form.get("uuid")
+
+    input_uuid = current_enrollment.get("uuid")
+    device_id = current_enrollment.get("device_id")
+    major = current_enrollment.get("major")
+    minor = current_enrollment.get("minor")
 
     # Name validation
     if not name:
@@ -87,40 +102,22 @@ def submit():
     
     device_id, distance = get_nearest_device()
 
-    if not device_id:
-        return "Error: No nearby device detected."
-
     # Validate UUID format (8-4-4-4-12-major-minor)
     try:
         _ = _uuid.UUID(input_uuid)
     except (ValueError, TypeError):
         return "Error: Invalid UUID format."
 
-    matching_beacon = None
-    with mqtt_lock:
-        for dev, data in dist_list.items():
-            # Requires a valid beacon to be nearby during enrollment
-            if data.get("uuid") == input_uuid and data["distance"] <= enroll_dist:
-                matching_beacon = dev
-                major = data["major"]
-                minor = data["minor"]
-                break
-
-    # Check for duplicates
-    if not matching_beacon:
-        return "Error: UUID beacon not found nearby."
     if device_id in db:
         return f"Device already enrolled as {db[device_id]['name']}"
     
     # Check if beacon is already in DB
     with mqtt_lock:
-        if matching_beacon in db:
-            return f"Device already enrolled as {db[matching_beacon]['name']}"
         for info in db.values():
             if info.get("uuid") == input_uuid:
                 return "Error: UUID already enrolled."
         # Insert new enrollment
-        db[matching_beacon] = {"name": name, "uuid": input_uuid, "major": major, "minor": minor}
+        db[device_id] = {"name": name, "uuid": input_uuid, "major": major, "minor": minor}
 
     # Atomic write to JSON file
     temp_path = None
@@ -166,7 +163,6 @@ def on_message(client, userdata, msg):
         device_id = parts[2]
         data = json.loads(msg.payload.decode())
         distance = data.get("distance", 99)
-        print(f"MQTT: device={device_id}, distance={distance}")
         
         # Parses device_id starting with "iBeacon:" for UUID, major, and minor
         uuid = major = minor = None

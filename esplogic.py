@@ -2,6 +2,7 @@ import paho.mqtt.client as mqtt
 import json
 import datetime
 import time
+import serial
 
 mqttbroker = "127.0.0.1"
 json_file = "students.json"
@@ -13,7 +14,11 @@ ema_distances = {}
 sampling_time = 5
 sample_start_time = time.time()
 # EMA smoothing factor
-alpha = 0.5
+alpha = 0.8
+
+# Adjust COM port as needed (e.g., "COM3" on Windows, "/dev/ttyUSB0" on Linux)
+ser = serial.Serial("/dev/ttyACM0", 115200, timeout=1)
+time.sleep(2)  # Allow Arduino to reset
 
 # Load database
 def load_db():
@@ -29,6 +34,13 @@ def load_db():
     except Exception as e:
         print(f"Error loading database: {e}")
         return {}
+    
+def send_to_arduino(message):
+    try:
+        ser.write((message + "\n").encode())
+        print(f"Sent to Arduino: {message}")
+    except Exception as e:
+        print(f"Serial error: {e}")
 
 def process_averages():
     # Load database in case of any changes
@@ -52,11 +64,13 @@ def process_averages():
         if avg_dist < exit_distance:
             if student_name not in present_students:
                 print(f"{student_name} entered the room.")
+                send_to_arduino(f"ENTER:{student_name}")
                 present_students.add(student_name)
         else:
             if student_name in present_students:
                 timestamp = datetime.datetime.now().strftime("%H:%M:%S")
                 print(f"{student_name} left at {timestamp}!")
+                send_to_arduino(f"EXIT:{student_name}")
                 present_students.remove(student_name)
 
 def on_message(client, userdata, msg):
@@ -82,7 +96,6 @@ def on_message(client, userdata, msg):
         
         # Processes averages periodically
         if time.time() - sample_start_time >= sampling_time:
-            print("Processing averages...")
             process_averages()
             sample_start_time = time.time()
 
